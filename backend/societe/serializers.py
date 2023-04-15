@@ -29,6 +29,9 @@ class CompteurSerializer(serializers.ModelSerializer):
         siret = validated_data.pop('siret')
         try:
             societe = Societe.objects.get(siret=siret)
+            if societe.user != self.context['request'].user:
+                raise serializers.ValidationError(
+                    {"message": "Vous n'êtes pas autorisé à ajouter un compteur à cette société"})
         except Societe.DoesNotExist:
             raise serializers.ValidationError(
                 {"message": "La societe n'existe pas"})
@@ -69,3 +72,40 @@ class ContractPriceSerializer(serializers.Serializer):
     numCompteur = serializers.CharField(max_length=255)
     dateDebut = serializers.DateField()
     dateFin = serializers.DateField()
+
+
+class HistoriqueCalculSerializer(serializers.ModelSerializer):
+    typeEnergie = serializers.SerializerMethodField()
+    numCompteur = serializers.SerializerMethodField()
+    consommation = serializers.SerializerMethodField()
+    societe_siret = serializers.ReadOnlyField(source='societe.siret')
+    societe_raison = serializers.ReadOnlyField(source='societe.raisonSocial')
+
+    class Meta:
+        model = HistoriqueCalcul
+        fields = ('id', 'resultat', 'typeEnergie', 'numCompteur', 'consommation',
+                  'societe_siret', 'societe_raison')
+
+    def get_typeEnergie(self, obj):
+        if obj.dynef is not None:
+            return 'GAZ'
+        elif obj.totalEnergie is not None:
+            return 'ELEC'
+        else:
+            return ''
+
+    def get_numCompteur(self, obj):
+        societe = obj.societe
+        compteur = Compteur.objects.filter(societe=societe).first()
+        if compteur:
+            return compteur.numCompteur
+        else:
+            return ''
+
+    def get_consommation(self, obj):
+        societe = obj.societe
+        compteur = Compteur.objects.filter(societe=societe).first()
+        if compteur:
+            return compteur.consommation
+        else:
+            return ''

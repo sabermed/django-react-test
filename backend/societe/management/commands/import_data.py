@@ -39,7 +39,6 @@ class Command(BaseCommand):
         with open(csv_file, 'r') as f:
             reader = csv.reader(f)
             header = next(reader)  # extract header row
-            print(header)
             logger.debug(f'Header: {header}')
             date_debut_idx = None
             date_fin_idx = None

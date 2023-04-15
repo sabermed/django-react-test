@@ -3,7 +3,7 @@ from django.db import models
 
 
 class Societe(models.Model):
-    siret = models.CharField(max_length=14, unique=True)
+    siret = models.CharField(max_length=255, unique=True)
     raisonSocial = models.CharField(max_length=255)
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              on_delete=models.CASCADE)

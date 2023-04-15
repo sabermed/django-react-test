@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .models import Societe, Compteur, TotalEnergie, Dynef, HistoriqueCalcul
-from .serializers import SocieteSerializer, CompteurSerializer, ContractPriceSerializer
+from .serializers import SocieteSerializer, CompteurSerializer, ContractPriceSerializer, HistoriqueCalculSerializer
 
 
 class AddSocieteView(generics.CreateAPIView):
@@ -58,7 +58,8 @@ class AddCompteurToSocieteView(generics.CreateAPIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(
+            data=request.data, context={'request': request})
         if serializer.is_valid():
             if Compteur.objects.filter(numCompteur=serializer.validated_data['numCompteur']).exists():
                 return Response({'error': 'Compteur déjà existe'}, status=status.HTTP_400_BAD_REQUEST)
@@ -132,15 +133,50 @@ class ContractPriceView(generics.CreateAPIView):
         except Compteur.DoesNotExist:
             return Response({"message": "num Compteur n'existe pas"})
 
+        offer = None
         if compteur.typeEnergie == 'ELEC':
             offer = TotalEnergie.objects.filter(
-                dateDebut__lte=dateDebut, dateFin__gte=dateFin).first()
-        else:
+                dateDebut__gte=dateDebut, dateFin__lte=dateFin).first()
+        elif compteur.typeEnergie == 'GAZ':
             offer = Dynef.objects.filter(
-                dateDebut__lte=dateDebut, dateFin__gte=dateFin).first()
+                dateDebut__gte=dateDebut, dateFin__lte=dateFin).first()
+        else:
+            return Response({"message": "il n'as pas aucune offre dans cette type.", "resultat": 0}, status=status.HTTP_200_OK)
 
         if offer is None:
             return Response({"message": "il n'as pas aucune offre dans cette période choisi.", "resultat": 0}, status=status.HTTP_200_OK)
+        else:
+            contract_price = compteur.consommation * offer.prix
+            historiqueCalcul = HistoriqueCalcul.objects.create(
+                resultat=contract_price,
+                totalEnergie=offer if compteur.typeEnergie == 'ELEC' else None,
+                dynef=offer if compteur.typeEnergie == 'GAZ' else None,
+                societe=societe,
+                user=request.user
+            )
+            historiqueCalcul.save()
+            return Response({"message": "calcul effectuer.", "resultat": contract_price}, status=status.HTTP_200_OK)
 
-        contract_price = compteur.consommation * offer.prix
-        return Response({"message": "calcul effectuer.", "resultat": contract_price}, status=status.HTTP_200_OK)
+
+class HistoriqueCalculByUserView(generics.ListAPIView):
+    serializer_class = HistoriqueCalculSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = HistoriqueCalcul.objects.filter(
+            user=user).select_related('societe')
+        return queryset
+
+
+class HistoriqueCalculBySocieteView(generics.ListAPIView):
+    serializer_class = HistoriqueCalculSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        user = self.request.user
+        siret = self.kwargs['siret']
+        societe = Societe.objects.filter(user=user, siret=siret).first()
+        queryset = HistoriqueCalcul.objects.filter(
+            user=user, societe=societe).select_related('societe')
+        return queryset
