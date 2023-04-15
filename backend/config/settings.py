@@ -162,6 +162,9 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'NON_FIELD_ERRORS_KEY': 'error',
+    "DATE_INPUT_FORMATS": ["%d-%m-%Y"],
+    'DATE_FORMAT': "%d-%m-%Y",
+    'DATETIME_FORMAT': "%d-%m-%Y %H:%M:%S",
 }
 
 

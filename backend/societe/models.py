@@ -4,7 +4,7 @@ from django.db import models
 
 class Societe(models.Model):
     siret = models.CharField(max_length=14, unique=True)
-    raisonSociale = models.CharField(max_length=255)
+    raisonSocial = models.CharField(max_length=255)
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              on_delete=models.CASCADE)
 
@@ -13,7 +13,7 @@ class Societe(models.Model):
 
 
 class Compteur(models.Model):
-    numCompteur = models.CharField(max_length=255)
+    numCompteur = models.CharField(max_length=255, unique=True)
     typeEnergie = models.CharField(max_length=255)
     consommation = models.FloatField()
     societe = models.ForeignKey('Societe', on_delete=models.CASCADE)
