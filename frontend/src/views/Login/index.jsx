@@ -6,6 +6,7 @@ import { baseURL } from "../../Utils/api";
 import { LoginApi } from "../../Utils/ApiPath";
 import axios from "axios";
 import useAuth from "../../Utils/useAuth";
+import jwtDecode from "jwt-decode";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setApiError("");
     setLoading(true);
     try {
       const res = await axios.post(`${baseURL}/${LoginApi}`, values);
@@ -35,7 +37,9 @@ export default function Login() {
           token = res.data.token;
         }
         if (token) {
+          const decoded = jwtDecode(token);
           user = {
+            id: decoded.user_id,
             nom: res.data.nom,
             prenom: res.data.prenom,
             email: res.data.email,
@@ -46,12 +50,15 @@ export default function Login() {
         navigate("/", { replace: true });
       }
     } catch (error) {
-      console.log(error.response.data);
+      if (error.response.status == 401) {
+        setApiError(error.response.data.message);
+      }
       setLoading(false);
     }
   };
 
   const onChange = (e) => {
+    setApiError("");
     setValues({ ...values, [e.target.name]: e.target.value });
   };
 
@@ -100,6 +107,19 @@ export default function Login() {
             </button>
           </form>
         </div>
+        {apiError && (
+          <p
+            style={{
+              width: "100%",
+              color: "red",
+              fontSize: "12px",
+              marginBottom: "12px",
+              textAlign: "center",
+            }}
+          >
+            {apiError}
+          </p>
+        )}
         <p className="form-footer">
           <span>Vous n'avez pas de compte ? </span>
           <Link to={"/register"} className="h-text">
